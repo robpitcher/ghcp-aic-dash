@@ -1,0 +1,75 @@
+import type { NormalizedAiCreditItem } from "@/lib/github/types";
+import type { EffectiveBudget } from "@/lib/budget";
+
+export const DEMO_LOGIN = "demo-user";
+
+export const demoBudget: EffectiveBudget = {
+  scopedLogin: DEMO_LOGIN,
+  hasBudget: true,
+  source: "individual",
+  amountUsd: 50,
+  amountCredits: 5_000,
+  consumedUsd: 18.4,
+  consumedCredits: 1_840,
+  remainingUsd: 31.6,
+  remainingCredits: 3_160,
+  percentUsed: 36.8,
+};
+
+/** Representative monthly line items, shifted to the requested month. */
+export const demoUsageItems: NormalizedAiCreditItem[] = [
+  {
+    usageDate: "2026-01-08",
+    product: "Copilot",
+    sku: "premium",
+    model: "Claude Sonnet",
+    costCenter: null,
+    orgName: "Demo Enterprise",
+    userLogin: DEMO_LOGIN,
+    teamName: null,
+    unitType: "credit",
+    pricePerUnit: 0.01,
+    grossQuantity: 920,
+    discountQuantity: 650,
+    netQuantity: 270,
+    grossAmount: 9.2,
+    discountAmount: 6.5,
+    netAmount: 2.7,
+  },
+  {
+    usageDate: "2026-01-15",
+    product: "Copilot",
+    sku: "premium",
+    model: "GPT-4.1",
+    costCenter: null,
+    orgName: "Demo Enterprise",
+    userLogin: DEMO_LOGIN,
+    teamName: null,
+    unitType: "credit",
+    pricePerUnit: 0.01,
+    grossQuantity: 560,
+    discountQuantity: 420,
+    netQuantity: 140,
+    grossAmount: 5.6,
+    discountAmount: 4.2,
+    netAmount: 1.4,
+  },
+  {
+    usageDate: "2026-01-22",
+    product: "Copilot",
+    sku: "premium",
+    model: "Gemini 2.5 Pro",
+    costCenter: null,
+    orgName: "Demo Enterprise",
+    userLogin: DEMO_LOGIN,
+    teamName: null,
+    unitType: "credit",
+    pricePerUnit: 0.01,
+    grossQuantity: 320,
+    discountQuantity: 250,
+    netQuantity: 70,
+    grossAmount: 3.2,
+    discountAmount: 2.5,
+    netAmount: 0.7,
+  },
+];

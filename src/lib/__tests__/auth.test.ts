@@ -1,0 +1,217 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import {
+  safeCompare,
+  createIdentitySession,
+  verifyIdentitySession,
+  resolveRole,
+  isIdentityModeEnabled,
+  resolveUserScope,
+  getIdentitySessionFromRequest,
+} from "@/lib/auth";
+
+describe("safeCompare", () => {
+  it("returns true for identical strings", () => {
+    expect(safeCompare("hunter2", "hunter2")).toBe(true);
+  });
+
+  it("returns false for different strings", () => {
+    expect(safeCompare("hunter2", "hunter3")).toBe(false);
+  });
+
+  it("returns false for different-length strings", () => {
+    expect(safeCompare("abc", "abcd")).toBe(false);
+  });
+
+  it("returns false for empty vs non-empty", () => {
+    expect(safeCompare("", "x")).toBe(false);
+  });
+});
+
+describe("resolveRole", () => {
+  const original = process.env.ADMIN_LOGINS;
+  afterEach(() => {
+    if (original === undefined) delete process.env.ADMIN_LOGINS;
+    else process.env.ADMIN_LOGINS = original;
+  });
+
+  it("defaults to developer when ADMIN_LOGINS is unset", () => {
+    delete process.env.ADMIN_LOGINS;
+    expect(resolveRole("alice")).toBe("developer");
+  });
+
+  it("grants admin for an allowlisted login", () => {
+    process.env.ADMIN_LOGINS = "alice,bob";
+    expect(resolveRole("alice")).toBe("admin");
+    expect(resolveRole("bob")).toBe("admin");
+  });
+
+  it("matches the allowlist case-insensitively", () => {
+    process.env.ADMIN_LOGINS = "Alice,BOB";
+    expect(resolveRole("alice")).toBe("admin");
+    expect(resolveRole("BoB")).toBe("admin");
+  });
+
+  it("defaults to developer for a login not in the allowlist", () => {
+    process.env.ADMIN_LOGINS = "alice,bob";
+    expect(resolveRole("carol")).toBe("developer");
+  });
+
+  it("tolerates whitespace around allowlist entries", () => {
+    process.env.ADMIN_LOGINS = " alice , bob ";
+    expect(resolveRole("bob")).toBe("admin");
+  });
+});
+
+describe("isIdentityModeEnabled", () => {
+  const orig = {
+    id: process.env.GITHUB_APP_CLIENT_ID,
+    secret: process.env.GITHUB_APP_CLIENT_SECRET,
+    session: process.env.SESSION_SECRET,
+  };
+  afterEach(() => {
+    for (const [k, v] of [
+      ["GITHUB_APP_CLIENT_ID", orig.id],
+      ["GITHUB_APP_CLIENT_SECRET", orig.secret],
+      ["SESSION_SECRET", orig.session],
+    ] as const) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  it("is disabled unless all identity env vars are set", () => {
+    delete process.env.GITHUB_APP_CLIENT_ID;
+    delete process.env.GITHUB_APP_CLIENT_SECRET;
+    delete process.env.SESSION_SECRET;
+    expect(isIdentityModeEnabled()).toBe(false);
+
+    process.env.GITHUB_APP_CLIENT_ID = "id";
+    expect(isIdentityModeEnabled()).toBe(false);
+
+    process.env.GITHUB_APP_CLIENT_SECRET = "secret";
+    expect(isIdentityModeEnabled()).toBe(false);
+
+    process.env.SESSION_SECRET = "signing-secret";
+    expect(isIdentityModeEnabled()).toBe(true);
+  });
+});
+
+describe("identity session mint/verify", () => {
+  const original = process.env.SESSION_SECRET;
+  beforeEach(() => {
+    process.env.SESSION_SECRET = "test-session-secret";
+  });
+  afterEach(() => {
+    if (original === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = original;
+  });
+
+  it("round-trips a valid session", () => {
+    const token = createIdentitySession({ login: "alice", id: 42, role: "admin" });
+    expect(token).not.toBe("");
+    expect(verifyIdentitySession(token)).toEqual({
+      login: "alice",
+      id: 42,
+      role: "admin",
+    });
+  });
+
+  it("returns null for a tampered payload", () => {
+    const token = createIdentitySession({ login: "alice", id: 42, role: "developer" });
+    const [, signature] = token.split(".");
+    const forged = Buffer.from(
+      JSON.stringify({ login: "alice", id: 42, role: "admin", iat: Date.now() }),
+    ).toString("base64url");
+    expect(verifyIdentitySession(`${forged}.${signature}`)).toBeNull();
+  });
+
+  it("returns null for a tampered signature", () => {
+    const token = createIdentitySession({ login: "alice", id: 42, role: "developer" });
+    const [payload] = token.split(".");
+    expect(verifyIdentitySession(`${payload}.deadbeef`)).toBeNull();
+  });
+
+  it("returns null for an expired session", () => {
+    const token = createIdentitySession({ login: "alice", id: 42, role: "developer" });
+    expect(verifyIdentitySession(token)).not.toBeNull();
+    const realNow = Date.now();
+    const spy = vi.spyOn(Date, "now").mockReturnValue(realNow + 25 * 60 * 60 * 1000);
+    try {
+      expect(verifyIdentitySession(token)).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("returns null when SESSION_SECRET is unset", () => {
+    const token = createIdentitySession({ login: "alice", id: 1, role: "developer" });
+    delete process.env.SESSION_SECRET;
+    expect(verifyIdentitySession(token)).toBeNull();
+  });
+});
+
+describe("resolveUserScope (forced self-scope — core security property)", () => {
+  it("forces a developer to their own login, ignoring a crafted ?user=", () => {
+    const scope = resolveUserScope({ login: "Alice", id: 1, role: "developer" }, "bob");
+    expect(scope).toEqual({ user: "alice", forced: true });
+  });
+
+  it("scopes a developer with no ?user= to their own login", () => {
+    const scope = resolveUserScope({ login: "Alice", id: 1, role: "developer" }, null);
+    expect(scope).toEqual({ user: "alice", forced: true });
+  });
+
+  it("lets an admin keep the requested user (reserved cross-user access)", () => {
+    const scope = resolveUserScope({ login: "admin", id: 2, role: "admin" }, "bob");
+    expect(scope).toEqual({ user: "bob", forced: false });
+  });
+
+  it("lowercases the requested user for case-insensitive matching", () => {
+    expect(
+      resolveUserScope({ login: "admin", id: 2, role: "admin" }, "Bob_Dev"),
+    ).toEqual({ user: "bob_dev", forced: false });
+  });
+
+  it("leaves the requested value untouched when there is no identity session", () => {
+    expect(resolveUserScope(null, "bob")).toEqual({ user: "bob", forced: false });
+    expect(resolveUserScope(null, null)).toEqual({ user: null, forced: false });
+  });
+});
+
+describe("getIdentitySessionFromRequest", () => {
+  const original = { ...process.env };
+  beforeEach(() => {
+    process.env.GITHUB_APP_CLIENT_ID = "id";
+    process.env.GITHUB_APP_CLIENT_SECRET = "secret";
+    process.env.SESSION_SECRET = "test-session-secret";
+  });
+  afterEach(() => {
+    process.env = { ...original };
+  });
+
+  function requestWithCookie(name: string, value: string): Request {
+    return new Request("https://example.test/api/usage/me", {
+      headers: { cookie: `${name}=${value}` },
+    });
+  }
+
+  it("returns the verified session from the identity cookie", () => {
+    const token = createIdentitySession({ login: "alice", id: 1, role: "developer" });
+    expect(
+      getIdentitySessionFromRequest(requestWithCookie("identity_session", token)),
+    ).toEqual({ login: "alice", id: 1, role: "developer" });
+  });
+
+  it("returns null when identity mode is disabled", () => {
+    delete process.env.GITHUB_APP_CLIENT_ID;
+    const token = createIdentitySession({ login: "alice", id: 1, role: "developer" });
+    expect(
+      getIdentitySessionFromRequest(requestWithCookie("identity_session", token)),
+    ).toBeNull();
+  });
+
+  it("returns null when no identity cookie is present", () => {
+    const req = new Request("https://example.test/api/usage/me");
+    expect(getIdentitySessionFromRequest(req)).toBeNull();
+  });
+});

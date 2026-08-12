@@ -1,0 +1,78 @@
+name: Apply approved AI credit budget request
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Budget request issue number (digits only)
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: budget-request-apply-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  approval-preview:
+    if: github.event_name == 'issues' && github.event.label.name == 'budget-approved' && vars.BUDGET_WRITE_ENABLED != 'true' && startsWith(github.event.issue.title, '[AI Credit Budget Request]') && contains(github.event.issue.body, 'ghcp-aic-budget-request:v1')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preview approved budget request
+        uses: ./.github/actions/budget-issueops
+        with:
+          operation: apply
+          issue-number: ${{ github.event.issue.number }}
+          dry-run: "true"
+          publish-preview: "true"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUDGET_WRITE_ENABLED: ${{ vars.BUDGET_WRITE_ENABLED }}
+
+  dry-run:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Plan budget request
+        uses: ./.github/actions/budget-issueops
+        with:
+          operation: apply
+          issue-number: ${{ inputs.issue_number }}
+          dry-run: "true"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUDGET_WRITE_ENABLED: ${{ vars.BUDGET_WRITE_ENABLED }}
+
+  write:
+    if: github.event_name == 'issues' && github.event.label.name == 'budget-approved' && vars.BUDGET_WRITE_ENABLED == 'true' && startsWith(github.event.issue.title, '[AI Credit Budget Request]') && contains(github.event.issue.body, 'ghcp-aic-budget-request:v1')
+    runs-on: ubuntu-latest
+    environment: budget-approver
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply budget request
+        uses: ./.github/actions/budget-issueops
+        with:
+          operation: apply
+          issue-number: ${{ github.event.issue.number }}
+          dry-run: "false"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUDGET_WRITE_ENABLED: ${{ vars.BUDGET_WRITE_ENABLED }}
+          GH_BILLING_ADMIN_TOKEN: ${{ secrets.GH_BILLING_ADMIN_TOKEN }}

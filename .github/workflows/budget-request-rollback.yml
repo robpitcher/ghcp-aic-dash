@@ -1,0 +1,68 @@
+name: Roll back expired AI credit budget requests
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Applied request issue number to roll back early
+        required: false
+        type: string
+      dry_run:
+        description: Report the rollback without any mutation
+        required: true
+        default: true
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: budget-request-rollback
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      expired_count: ${{ steps.discover.outputs['expired-count'] }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find expired requests
+        id: discover
+        uses: ./.github/actions/budget-issueops
+        with:
+          operation: rollback
+          dry-run: "true"
+          issue-number: ${{ inputs.issue_number }}
+          force-rollback: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_number != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUDGET_WRITE_ENABLED: ${{ vars.BUDGET_WRITE_ENABLED }}
+
+  write:
+    needs: discovery
+    if: vars.BUDGET_WRITE_ENABLED == 'true' && needs.discovery.outputs.expired_count != '0' && (github.event_name == 'schedule' || (inputs.dry_run == false && inputs.issue_number != ''))
+    runs-on: ubuntu-latest
+    environment: budget-approver
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Roll back expired requests
+        uses: ./.github/actions/budget-issueops
+        with:
+          operation: rollback
+          dry-run: "false"
+          issue-number: ${{ inputs.issue_number }}
+          force-rollback: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_number != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUDGET_WRITE_ENABLED: ${{ vars.BUDGET_WRITE_ENABLED }}
+          GH_BILLING_ADMIN_TOKEN: ${{ secrets.GH_BILLING_ADMIN_TOKEN }}

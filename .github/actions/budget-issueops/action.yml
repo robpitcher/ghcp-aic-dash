@@ -1,0 +1,38 @@
+name: Budget Request IssueOps
+description: Triage, preview, apply, and roll back AI credit budget requests
+
+inputs:
+  operation:
+    description: Operation to run (triage, apply, or rollback)
+    required: true
+  issue-number:
+    description: Budget request issue number for apply or targeted rollback
+    required: false
+  force-rollback:
+    description: Allow a targeted rollback before its recorded expiration
+    required: false
+    default: "false"
+  dry-run:
+    description: Report the planned operation without billing mutation
+    required: false
+    default: "true"
+  publish-preview:
+    description: Update the marked apply-preview issue comment
+    required: false
+    default: "false"
+  config-path:
+    description: Path to the checked-in IssueOps configuration
+    required: false
+    default: .github/ghcp-aic-issueops.yml
+
+outputs:
+  expired-count:
+    description: Number of expired rollback candidates discovered
+
+runs:
+  using: node24
+  main: dist/index.js
+
+branding:
+  icon: shield
+  color: blue

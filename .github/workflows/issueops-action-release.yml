@@ -1,0 +1,29 @@
+name: Verify IssueOps action release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "issueops-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - name: Verify bundled action is current
+        run: npm run check:issueops-action
+
+      - name: Run IssueOps tests
+        run: npx vitest run src/lib/issueops/__tests__

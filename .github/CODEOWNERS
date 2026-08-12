@@ -1,0 +1,27 @@
+# Code owners for the GitHub Copilot AI Credit Dashboard.
+#
+# Owners listed here are requested for review automatically when a matching
+# path changes. The last matching pattern wins, so the security-sensitive
+# entries below intentionally follow the catch-all rule.
+
+* @robpitcher
+
+# Authentication, authorization, billing access, and IssueOps logic carry the
+# project's core security guarantees: self-scoped `/me` access, server-only
+# credentials, fail-closed enterprise membership checks, and protected budget
+# writes. Keep review on these paths explicit.
+/src/lib/                       @robpitcher
+/src/app/api/                   @robpitcher
+/scripts/                       @robpitcher
+
+# Workflow, action, and release configuration can change what runs with
+# elevated permissions.
+/.github/                       @robpitcher
+/.github/workflows/             @robpitcher
+/.github/actions/               @robpitcher
+
+# Project governance, licensing, and security policy.
+/LICENSE                        @robpitcher
+/SECURITY.md                    @robpitcher
+/CODE_OF_CONDUCT.md             @robpitcher
+/.github/CODEOWNERS             @robpitcher

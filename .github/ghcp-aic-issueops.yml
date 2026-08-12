@@ -1,0 +1,5 @@
+schema: "ghcp-aic-issueops:v1"
+enterprise_slug: null
+auto_approval:
+  max_delta_credits: 0
+  max_total_credits: 0
