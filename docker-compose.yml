@@ -15,8 +15,10 @@ services:
       dockerfile: Dockerfile
       target: demo
       args:
-        # Set NPM_REGISTRY in .env when registry.npmjs.org is blocked on your network.
-        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
+        # Optional override. Leave unset to inherit the npmrc secret below.
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+      secrets:
+        - npmrc
     image: ghcp-aic-dash:demo
     ports:
       - "3000:3000"
@@ -33,8 +35,10 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        # Set NPM_REGISTRY in .env when registry.npmjs.org is blocked on your network.
-        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
+        # Optional override. Leave unset to inherit the npmrc secret below.
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+      secrets:
+        - npmrc
     image: ghcp-aic-dash:local
     ports:
       - "3000:3000"
@@ -53,3 +57,13 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+
+# The build reads your existing npm configuration rather than duplicating it in
+# `.env`, so a corporate feed (and any credentials in that file) is used by
+# `npm ci` without being written into the image. It is mounted only for that
+# build step. Override the location with NPM_CONFIG_USERCONFIG — the same
+# variable npm itself honours — and set it to ./.npmrc if you have no
+# user-level file. `npm config get userconfig` prints your current path.
+secrets:
+  npmrc:
+    file: ${NPM_CONFIG_USERCONFIG:-~/.npmrc}

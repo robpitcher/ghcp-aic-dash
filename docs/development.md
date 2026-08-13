@@ -135,14 +135,29 @@ To stop and remove the Compose containers:
 docker compose down
 ```
 
-The Docker build uses `npm ci`. When `NPM_REGISTRY` is unset, npm uses its
-standard public default. For a direct image build with an approved mirror:
+The Docker build uses `npm ci`. Compose mounts your user-level `.npmrc` as a
+build secret, so a build behind an internal registry needs no extra
+configuration: the registry (and any credentials that file holds) is used by
+`npm ci` only, and never lands in an image layer or the image history. If your
+configuration lives elsewhere, point Compose at it with the same variable npm
+uses — `NPM_CONFIG_USERCONFIG` — and set it to `./.npmrc` when you have no
+user-level file. `npm config get userconfig` prints the path in use.
+
+A direct image build passes the same secret explicitly:
+
+```powershell
+docker build --secret id=npmrc,src=$HOME/.npmrc -t ghcp-aic-dash:local .
+```
+
+For environments with no `.npmrc` to share, `NPM_REGISTRY` still names a
+registry directly and overrides the mounted configuration:
 
 ```powershell
 docker build --build-arg NPM_REGISTRY=https://npm.example.invalid/ -t ghcp-aic-dash:local .
 ```
 
-Replace the example URL with your approved registry.
+Replace the example URL with your approved registry. When neither is supplied,
+npm uses its standard public default.
 
 ## Testing, linting, and building
 

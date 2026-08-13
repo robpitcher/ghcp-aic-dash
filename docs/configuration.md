@@ -67,7 +67,8 @@ Do not copy these placeholder values into a real deployment.
 | `APP_BASE_URL` | Recommended; required behind proxies | Server config | Public origin with no trailing slash. Local default is `http://localhost:3000`. |
 | `ADMIN_LOGINS` | Optional | Server config | Comma-separated reserved administrator allowlist. It does not widen `/me` endpoints. |
 | `BUDGET_REQUEST_REPOSITORY` | Optional | Server config | Exact `OWNER/REPO` destination that enables prepared budget-request issues. |
-| `NPM_REGISTRY` | Optional Docker build input | Build config | npm registry or approved mirror, including trailing slash. When unset, npm uses its standard default. |
+| `NPM_REGISTRY` | Optional Docker build input | Build config | npm registry or approved mirror, including trailing slash. Overrides the `.npmrc` Compose mounts as a build secret. When neither is set, npm uses its standard default. |
+| `NPM_CONFIG_USERCONFIG` | Optional Docker build input | Build config | Path to the npm configuration Compose mounts into the build. Defaults to `~/.npmrc`; set it to `./.npmrc` when no user-level file exists. |
 
 ### Server-only rule
 

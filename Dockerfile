@@ -4,16 +4,23 @@
 # ── Dependencies ──────────────────────────────────────────────────────────────
 FROM node:24-alpine AS deps
 WORKDIR /app
-# Environments can point the build at an approved registry:
+# The build reuses the host's npm configuration instead of restating it. Compose
+# mounts your user-level `.npmrc` as a build secret, so an internal feed — and
+# any credentials it carries — reaches `npm ci` without entering an image layer,
+# the image history, or the build cache. A direct build does the same with:
+#   docker build --secret id=npmrc,src=$HOME/.npmrc .
+# NPM_REGISTRY stays available for environments with no `.npmrc` to pass, and
+# overrides the mounted configuration when set:
 #   docker build --build-arg NPM_REGISTRY=<mirror-url> .
-# npm rewrites the lockfile's registry.npmjs.org URLs to this host, so the
+# Either way npm rewrites the lockfile's registry URLs to that host, so the
 # committed lockfile stays valid and builds stay reproducible.
 ARG NPM_REGISTRY
 # The version-check ping talks to the registry on every npm invocation.
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 # Install from the committed lockfile for reproducible builds.
 COPY package.json package-lock.json ./
-RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi \
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
+  if [ -n "$NPM_REGISTRY" ]; then export NPM_CONFIG_REGISTRY="$NPM_REGISTRY"; fi \
   && npm ci
 
 # ── Demo ──────────────────────────────────────────────────────────────────────
