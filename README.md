@@ -12,7 +12,7 @@ that stays on the server.
 - Effective-budget display and a current-month spending forecast
 - Optional, reviewable budget-increase requests through GitHub issues
 - GitHub Actions triage with protected apply and rollback workflows
-- Credential-free local demo mode with synthetic data
+- Credential-free demo mode with synthetic data, runnable in Docker or Node.js
 - Docker support for local container development
 
 The application has no database. It fetches current billing data from GitHub
@@ -32,7 +32,27 @@ flowchart LR
 
 See [Architecture](docs/architecture.md) for the full runtime design.
 
-## Demo quick start
+## Quick start (recommended)
+
+The fastest way to see the dashboard is the Docker demo. It needs no GitHub App,
+no token, and no `.env` file. Requires
+[Docker](https://docs.docker.com/get-started/get-docker/) with Compose:
+
+```powershell
+docker compose up --build
+```
+
+Open <http://localhost:3000>. Stop it with:
+
+```powershell
+docker compose down
+```
+
+Demo mode uses synthetic data, skips GitHub sign-in, never calls GitHub, and
+disables budget requests. It is for local evaluation only: demo mode never
+activates in a production build.
+
+### Demo without Docker
 
 Requires [Node.js 20 or later](https://nodejs.org/) and npm. In PowerShell:
 
@@ -42,11 +62,9 @@ $env:DEMO_ENV = "true"
 npm run dev
 ```
 
-Open <http://localhost:3000>. Demo mode uses synthetic data, skips GitHub
-sign-in, never calls GitHub, and disables budget requests. It works only in
-development.
+## Configured quick start
 
-## Configured local quick start
+Use this when you want real sign-in and real billing data.
 
 1. Create a GitHub App with callback URL
    `http://localhost:3000/api/auth/github/callback`.
@@ -58,7 +76,13 @@ development.
    Copy-Item .env.example .env
    ```
 
-4. Start the app:
+4. Start the app, either in Docker:
+
+   ```powershell
+   docker compose --profile configured up --build
+   ```
+
+   or with Node.js:
 
    ```powershell
    npm install
@@ -72,13 +96,14 @@ setting and GitHub App step, see [Configuration](docs/configuration.md).
 
 | Command | Purpose |
 | --- | --- |
+| `docker compose up --build` | Run the credential-free demo container |
+| `docker compose --profile configured up --build` | Run the configured container |
 | `npm run dev` | Start the Next.js development server |
 | `npm run build` | Create a production build |
 | `npm run start` | Serve a production build |
 | `npm run lint` | Run ESLint |
 | `npm run test` | Run the Vitest suite once |
 | `npm run test:watch` | Run Vitest in watch mode |
-| `docker compose up --build` | Build and run the local container |
 
 ## Documentation
 

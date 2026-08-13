@@ -48,7 +48,14 @@ registry. The package names, versions, and integrity hashes remain locked.
 
 ## Demo development
 
-Demo mode is credential-free and uses synthetic data:
+Demo mode is credential-free and uses synthetic data. The quickest path is the
+Docker demo, which needs no `.env`:
+
+```powershell
+docker compose up --build
+```
+
+Without Docker:
 
 ```powershell
 $env:DEMO_ENV = "true"
@@ -104,14 +111,23 @@ operations ([IssueOps](glossary.md#issueops)) setup, and production guidance.
 
 ## Docker
 
-Create `.env` first, then run:
+The default Compose service is the credential-free demo. It builds the
+`demo` stage, which runs the development server because demo mode never
+activates in a production build. No `.env` is required:
 
 ```powershell
 docker compose up --build
 ```
 
+For configured mode, create `.env` first, then start the `configured` profile:
+
+```powershell
+docker compose --profile configured up --build
+```
+
 Open <http://localhost:3000>. The Compose configuration injects environment
-values at runtime; secrets are not baked into the image.
+values at runtime; secrets are not baked into the image. The demo image is for
+local evaluation only and must not be deployed.
 
 To stop and remove the Compose containers:
 

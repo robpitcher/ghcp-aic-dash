@@ -16,6 +16,25 @@ COPY package.json package-lock.json ./
 RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi \
   && npm ci
 
+# ── Demo ──────────────────────────────────────────────────────────────────────
+# Credential-free local demo. Demo mode never activates in a production build,
+# so this stage runs the development server with synthetic data. It is for
+# local evaluation only and must not be deployed.
+FROM node:24-alpine AS demo
+WORKDIR /app
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+ENV DEMO_ENV=true
+ENV PORT=3000
+# The dev server writes its build cache into /app/.next at runtime.
+RUN chown node:node /app
+COPY --from=deps --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node . .
+USER node
+EXPOSE 3000
+CMD ["npm", "run", "dev", "--", "-H", "0.0.0.0"]
+
 # ── Build ─────────────────────────────────────────────────────────────────────
 FROM node:24-alpine AS builder
 WORKDIR /app
