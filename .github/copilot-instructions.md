@@ -15,7 +15,7 @@ npm run test:watch   # Vitest watch mode
 
 Run one test file with `npx vitest run src/lib/__tests__/auth.test.ts`, or filter tests by name with `npx vitest run -t "test name"`. Vitest discovers `src/**/*.test.ts` and `src/**/*.test.tsx`, uses the `@/*` alias for `src/*`, and loads `src/test/setup.ts`.
 
-For an environment close to deployment, `docker compose up --build` runs the standalone Next.js image on port 3000. Copy `.env.example` to `.env`; identity and billing secrets are runtime configuration and must not be put in the image or sent to the browser.
+For a container environment, `docker compose up --build` runs the credential-free demo service on port 3000. For a configured environment close to deployment, copy `.env.example` to `.env` and run `docker compose --profile configured up --build app`, which serves the standalone Next.js image. Identity and billing secrets are runtime configuration and must not be put in the image or sent to the browser.
 
 ## Architecture
 
@@ -25,8 +25,8 @@ For an environment close to deployment, `docker compose up --build` runs the sta
 - `src/lib/config.ts` is the runtime configuration boundary. Identity, billing, enterprise membership, and optional IssueOps configuration are validated independently with Zod so incomplete local deployments can render actionable configuration states.
 - `src/lib/github` is the isolated GitHub enterprise billing client. It normalizes upstream usage/budget responses, paginates budgets with a cap, retries transient failures with backoff, and treats permission-related 401/403/404 responses as actionable errors.
 - `src/lib/usage` provides the live on-demand usage provider and pure aggregation/insight functions. There is no application database: monthly usage and the six-month trend are fetched from GitHub when requested.
-- `src/lib/budget` resolves the effective budget and builds the prefilled issue request. The browser submits only an increase amount and justification; the server re-fetches the authenticated user’s budget and opens a reviewable GitHub issue rather than creating one.
-- `src/lib/issueops` contains the pure parsing, policy, triage, apply, audit, and rollback logic used by `scripts/budget-request-*.ts`. GitHub Actions in `.github/workflows` install with `npm ci` and run those scripts with `tsx`.
+- `src/lib/budget` resolves the effective budget and builds the prefilled issue request. The browser submits only an increase amount and justification; the server re-fetches the authenticated user’s budget and returns a prefilled issue URL the developer submits, rather than creating an issue on their behalf.
+- `src/lib/issueops` contains the pure parsing, policy, triage, apply, audit, and rollback logic invoked through `src/lib/issueops/commands/*`. The workflows in `.github/workflows` run that logic through the bundled `.github/actions/budget-issueops` action, whose `dist/index.js` is built from `src/index.ts` with `npm run build:issueops-action`; run `npm run check:issueops-action` after changing anything the action bundles so the committed bundle stays in sync.
 - Budget writes are intentionally protected: dry-run is the default, `BUDGET_WRITE_ENABLED` must be exactly `true`, and real apply/rollback jobs run in the `budget-approver` environment with required reviewers and the dedicated `GH_BILLING_ADMIN_TOKEN`. The issue audit comment is the state store for apply/rollback.
 
 ## Repository conventions
