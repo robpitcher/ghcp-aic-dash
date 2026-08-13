@@ -79,7 +79,7 @@ Use this when you want real sign-in and real billing data.
 4. Start the app, either in Docker:
 
    ```powershell
-   docker compose --profile configured up --build
+   docker compose --profile configured up --build app
    ```
 
    or with Node.js:
@@ -97,7 +97,7 @@ setting and GitHub App step, see [Configuration](docs/configuration.md).
 | Command | Purpose |
 | --- | --- |
 | `docker compose up --build` | Run the credential-free demo container |
-| `docker compose --profile configured up --build` | Run the configured container |
+| `docker compose --profile configured up --build app` | Run the configured container |
 | `npm run dev` | Start the Next.js development server |
 | `npm run build` | Create a production build |
 | `npm run start` | Serve a production build |

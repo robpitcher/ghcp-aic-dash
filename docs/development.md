@@ -122,7 +122,7 @@ docker compose up --build
 For configured mode, create `.env` first, then start the `configured` profile:
 
 ```powershell
-docker compose --profile configured up --build
+docker compose --profile configured up --build app
 ```
 
 Open <http://localhost:3000>. The Compose configuration injects environment
