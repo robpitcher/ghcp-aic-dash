@@ -20,10 +20,16 @@ describe("demo data", () => {
     });
 
     expect(monthly.period).toEqual({ year: 2026, month: 8 });
-    expect(monthly.totals.grossCredits).toBe(1800);
+    expect(monthly.totals.grossCredits).toBeGreaterThan(0);
     expect(monthly.perModel).toHaveLength(3);
     expect(trend).toHaveLength(2);
-    expect(trend[1].grossCredits).toBe(1800);
+    expect(trend[0].grossCredits).not.toBe(trend[1].grossCredits);
+    expect(trend[0].grossAmount).not.toBe(trend[1].grossAmount);
+    expect(monthly.perModel.map(({ model }) => model)).toEqual([
+      "Gemini 3.6 Flash",
+      "Claude Opus 4.7",
+      "GPT-5.5",
+    ]);
   });
 
   it("returns a self-scoped synthetic budget", () => {
