@@ -4,11 +4,15 @@
 # ── Dependencies ──────────────────────────────────────────────────────────────
 FROM node:24-alpine AS deps
 WORKDIR /app
-# The build reuses the host's npm configuration instead of restating it. Compose
-# mounts your user-level `.npmrc` as a build secret, so an internal feed — and
-# any credentials it carries — reaches `npm ci` without entering an image layer,
-# the image history, or the build cache. A direct build does the same with:
+# The build reuses an existing npm configuration instead of restating it. It
+# mounts an `.npmrc` as a build secret, so an internal feed — and any
+# credentials it carries — reaches `npm ci` without entering an image layer,
+# the image history, or the build cache. The secret is optional, so a plain
+# `docker build .` installs from the public registry with no setup. To install
+# from an internal feed, pass your own configuration:
 #   docker build --secret id=npmrc,src=$HOME/.npmrc .
+# Compose does this for you: set NPM_CONFIG_USERCONFIG in `.env` to that path
+# (it defaults to the repository's committed `.npmrc`).
 # NPM_REGISTRY stays available for environments with no `.npmrc` to pass, and
 # overrides the mounted configuration when set:
 #   docker build --build-arg NPM_REGISTRY=<mirror-url> .
@@ -19,7 +23,7 @@ ARG NPM_REGISTRY
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 # Install from the committed lockfile for reproducible builds.
 COPY package.json package-lock.json ./
-RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc,required=false \
   if [ -n "$NPM_REGISTRY" ]; then export NPM_CONFIG_REGISTRY="$NPM_REGISTRY"; fi \
   && npm ci
 

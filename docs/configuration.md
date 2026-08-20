@@ -70,7 +70,7 @@ Do not copy these placeholder values into a real deployment.
 | `ADMIN_LOGINS` | Optional | Server config | Comma-separated reserved administrator allowlist. It does not widen `/me` endpoints. |
 | `BUDGET_REQUEST_REPOSITORY` | Optional | Server config | Exact `OWNER/REPO` destination that enables prepared budget-request issues. |
 | `NPM_REGISTRY` | Optional Docker build input | Build config | npm registry or approved mirror, including trailing slash. Overrides the `.npmrc` Compose mounts as a build secret. When neither is set, npm uses its standard default. |
-| `NPM_CONFIG_USERCONFIG` | Optional Docker build input | Build config | Path to the npm configuration Compose mounts into the build. Defaults to `~/.npmrc`; set it to `./.npmrc` when no user-level file exists. |
+| `NPM_CONFIG_USERCONFIG` | Optional Docker build input | Build config | Path to the npm configuration Compose mounts into the build as a secret. Defaults to the repository's committed `.npmrc`; set it to your user-level file (e.g. `C:\Users\you\.npmrc`) to install from an internal feed. Compose does not expand `~`. |
 
 ### Server-only rule
 

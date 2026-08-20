@@ -137,19 +137,31 @@ To stop and remove the Compose containers for whichever mode is running:
 docker compose --profile "*" down
 ```
 
-The Docker build uses `npm ci`. Compose mounts your user-level `.npmrc` as a
-build secret, so a build behind an internal registry needs no extra
-configuration: the registry (and any credentials that file holds) is used by
-`npm ci` only, and never lands in an image layer or the image history. If your
-configuration lives elsewhere, point Compose at it with the same variable npm
-uses — `NPM_CONFIG_USERCONFIG` — and set it to `./.npmrc` when you have no
-user-level file. `npm config get userconfig` prints the path in use.
+The Docker build uses `npm ci` and installs from the public npm registry by
+default, so it needs no configuration. Compose mounts an `.npmrc` as a build
+secret, defaulting to this repository's committed file.
+
+If your organisation requires an internal npm feed, set `NPM_CONFIG_USERCONFIG`
+in `.env` to your user-level npm configuration — the same variable npm itself
+honours. Compose then mounts that file instead, so the feed and any credentials
+it holds are used by `npm ci` only, and never land in an image layer or the
+image history:
+
+```dotenv
+NPM_CONFIG_USERCONFIG=C:\Users\you\.npmrc
+```
+
+`npm config get userconfig` prints the path in use. Compose does not expand `~`,
+so give a full path. Because this lives in your untracked `.env`, it changes
+nothing for anyone else cloning the repository.
 
 A direct image build passes the same secret explicitly:
 
 ```powershell
-docker build --secret id=npmrc,src=$HOME/.npmrc -t ghcp-aic-dash:local .
+docker build --secret id=npmrc,src=$env:USERPROFILE\.npmrc -t ghcp-aic-dash:local .
 ```
+
+The secret is optional, so `docker build .` without it still succeeds.
 
 For environments with no `.npmrc` to share, `NPM_REGISTRY` still names a
 registry directly and overrides the mounted configuration:

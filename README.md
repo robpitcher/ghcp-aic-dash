@@ -42,11 +42,14 @@ no token, and no `.env` file. Requires
 docker compose --profile demo up --build
 ```
 
-If your Docker build must install from an approved npm mirror, pass
+If your Docker build must install from an internal npm feed, point
+`NPM_CONFIG_USERCONFIG` at your own npm configuration — Compose mounts it as a
+build secret, so its registry and credentials stay out of the image — or pass
 `NPM_REGISTRY` as a build argument, then start the demo:
 
 ```powershell
-docker compose --profile demo build --build-arg NPM_REGISTRY=https://npm.example.invalid/
+$env:NPM_CONFIG_USERCONFIG="$env:USERPROFILE\.npmrc"
+docker compose --profile demo build
 docker compose --profile demo up
 ```
 

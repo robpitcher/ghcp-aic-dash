@@ -80,12 +80,19 @@ services:
       DEMO_ENV: "true"
       APP_BASE_URL: http://localhost:3000
 
-# The build reads your existing npm configuration rather than duplicating it in
-# `.env`, so a corporate feed (and any credentials in that file) is used by
-# `npm ci` without being written into the image. It is mounted only for that
-# build step. Override the location with NPM_CONFIG_USERCONFIG — the same
-# variable npm itself honours — and set it to ./.npmrc if you have no
-# user-level file. `npm config get userconfig` prints your current path.
+# The build mounts an npm configuration file as a build secret, so an internal
+# feed — and any credentials that file carries — reaches `npm ci` without being
+# written into an image layer, the image history, or the build cache. It is
+# mounted for that build step only.
+#
+# The default is the repository's own committed `.npmrc`, which always exists,
+# so a build against the public registry works with no setup. To install from
+# an internal feed, point NPM_CONFIG_USERCONFIG — the same variable npm itself
+# honours — at your user-level file in `.env`:
+#   NPM_CONFIG_USERCONFIG=/home/you/.npmrc      # macOS/Linux
+#   NPM_CONFIG_USERCONFIG=C:\Users\you\.npmrc   # Windows
+# `npm config get userconfig` prints that path. Compose does not expand `~`, so
+# give a full path.
 secrets:
   npmrc:
-    file: ${NPM_CONFIG_USERCONFIG:-~/.npmrc}
+    file: ${NPM_CONFIG_USERCONFIG:-./.npmrc}
