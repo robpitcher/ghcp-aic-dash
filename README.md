@@ -5,6 +5,14 @@ AI credit usage and effective budget. The app signs users in with a GitHub App,
 verifies enterprise membership, and reads billing data with a privileged token
 that stays on the server.
 
+> [!WARNING]
+> This project is a proof of concept provided for evaluation purposes. Before
+> using it in your own environment, review and test the code, configuration,
+> security controls, and operational workflows for your requirements. It may
+> contain bugs or other defects and is not guaranteed to be suitable for
+> production use. You are responsible for validating and operating any
+> deployment.
+
 ## Key capabilities
 
 - Monthly personal usage, model breakdowns, six-month trends, and
