@@ -39,13 +39,21 @@ no token, and no `.env` file. Requires
 [Docker](https://docs.docker.com/get-started/get-docker/) with Compose:
 
 ```powershell
-docker compose up --build
+docker compose --profile demo up --build
+```
+
+If your Docker build must install from an approved npm mirror, pass
+`NPM_REGISTRY` as a build argument, then start the demo:
+
+```powershell
+docker compose --profile demo build --build-arg NPM_REGISTRY=https://npm.example.invalid/
+docker compose --profile demo up
 ```
 
 Open <http://localhost:3000>. Stop it with:
 
 ```powershell
-docker compose down
+docker compose --profile "*" down
 ```
 
 Demo mode uses synthetic data, skips GitHub sign-in, never calls GitHub, and
@@ -79,7 +87,7 @@ Use this when you want real sign-in and real billing data.
 4. Start the app, either in Docker:
 
    ```powershell
-   docker compose --profile configured up --build app
+   docker compose up --build
    ```
 
    or with Node.js:
@@ -96,8 +104,9 @@ setting and GitHub App step, see [Configuration](docs/configuration.md).
 
 | Command | Purpose |
 | --- | --- |
-| `docker compose up --build` | Run the credential-free demo container |
-| `docker compose --profile configured up --build app` | Run the configured container |
+| `docker compose up --build` | Run the configured container using `.env` |
+| `docker compose --profile demo up --build` | Run the credential-free demo container |
+| `docker compose --profile "*" down` | Stop the container for either mode |
 | `npm run dev` | Start the Next.js development server |
 | `npm run build` | Create a production build |
 | `npm run start` | Serve a production build |

@@ -15,7 +15,7 @@ npm run test:watch   # Vitest watch mode
 
 Run one test file with `npx vitest run src/lib/__tests__/auth.test.ts`, or filter tests by name with `npx vitest run -t "test name"`. Vitest discovers `src/**/*.test.ts` and `src/**/*.test.tsx`, uses the `@/*` alias for `src/*`, and loads `src/test/setup.ts`.
 
-For a container environment, `docker compose up --build` runs the credential-free demo service on port 3000. For a configured environment close to deployment, copy `.env.example` to `.env` and run `docker compose --profile configured up --build app`, which serves the standalone Next.js image. Identity and billing secrets are runtime configuration and must not be put in the image or sent to the browser.
+For a container environment, `docker compose up --build` runs the configured service on port 3000 using `.env`. Demo mode is opt-in per run with `docker compose --profile demo up --build` and ignores `.env` entirely; `DEMO_ENV` is deliberately not a `.env` setting. Use `docker compose --profile "*" down` to stop either mode. Identity and billing secrets are runtime configuration and must not be put in the image or sent to the browser.
 
 ## Architecture
 

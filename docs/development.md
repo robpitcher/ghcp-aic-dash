@@ -52,7 +52,7 @@ Demo mode is credential-free and uses synthetic data. The quickest path is the
 Docker demo, which needs no `.env`:
 
 ```powershell
-docker compose up --build
+docker compose --profile demo up --build
 ```
 
 Without Docker:
@@ -71,9 +71,8 @@ Open <http://localhost:3000>. Demo mode:
 
 Stop the server with <kbd>Ctrl</kbd>+<kbd>C</kbd>.
 
-To use a file instead of a temporary PowerShell variable, copy `.env.example`
-to `.env`, set `DEMO_ENV=true`, and leave credentials blank. Never commit
-`.env`.
+`DEMO_ENV` is deliberately not part of `.env`: that file configures the real,
+connected app, and demo mode is requested per run instead. Never commit `.env`.
 
 ## Configured development
 
@@ -85,22 +84,21 @@ Configured mode exercises real GitHub App sign-in and billing reads.
    Copy-Item .env.example .env
    ```
 
-2. In `.env`, keep `DEMO_ENV=false`.
-3. Configure the GitHub App callback as
+2. Configure the GitHub App callback as
    `http://localhost:3000/api/auth/github/callback`.
-4. Set the GitHub App client ID and secret.
-5. Generate a strong session secret, for example:
+3. Set the GitHub App client ID and secret.
+4. Generate a strong session secret, for example:
 
    ```powershell
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
-6. Set a classic personal access token (PAT) with
+5. Set a classic personal access token (PAT) with
    `manage_billing:copilot` (read) and `read:enterprise`.
-7. Set the GitHub Enterprise slug and keep
+6. Set the GitHub Enterprise slug and keep
    `GITHUB_BILLING_SCOPE=enterprise`.
-8. Keep `REQUIRE_ENTERPRISE_MEMBERSHIP=true` except for explicit local testing.
-9. Start the app:
+7. Keep `REQUIRE_ENTERPRISE_MEMBERSHIP=true` except for explicit local testing.
+8. Start the app:
 
    ```powershell
    npm run dev
@@ -111,28 +109,32 @@ operations ([IssueOps](glossary.md#issueops)) setup, and production guidance.
 
 ## Docker
 
-The default Compose service is the credential-free demo. It builds the
-`demo` stage, which runs the development server because demo mode never
-activates in a production build. No `.env` is required:
+`docker compose up --build` runs the configured app using `.env`. Demo mode is
+opt-in with an explicit flag and ignores `.env` completely:
 
 ```powershell
-docker compose up --build
+docker compose --profile demo up --build
 ```
 
-For configured mode, create `.env` first, then start the `configured` profile:
+The demo service builds the `demo` stage, which runs the development server
+because demo mode never activates in a production build.
+
+Because each mode is a separate Compose service sharing port 3000, stop the
+running one before switching. A plain `docker compose down` only targets the
+mode currently selected, so use the wildcard profile to stop either:
 
 ```powershell
-docker compose --profile configured up --build app
+docker compose --profile "*" down
 ```
 
 Open <http://localhost:3000>. The Compose configuration injects environment
 values at runtime; secrets are not baked into the image. The demo image is for
 local evaluation only and must not be deployed.
 
-To stop and remove the Compose containers:
+To stop and remove the Compose containers for whichever mode is running:
 
 ```powershell
-docker compose down
+docker compose --profile "*" down
 ```
 
 The Docker build uses `npm ci`. Compose mounts your user-level `.npmrc` as a
