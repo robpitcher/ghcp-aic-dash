@@ -19,9 +19,11 @@ Runtime configuration is validated in `src/lib/config.ts`. Identity, billing, me
 
 Demo mode serves a fixed `demo-user` with synthetic usage and budget data. It does not contact GitHub and disables budget requests.
 
-```dotenv
-DEMO_ENV=true
-APP_BASE_URL=http://localhost:3000
+It is requested per run rather than configured in `.env`:
+
+```powershell
+docker compose --profile demo up --build   # Docker
+$env:DEMO_ENV = "true"; npm run dev        # Node.js
 ```
 
 Important behavior:
@@ -29,6 +31,7 @@ Important behavior:
 - demo mode is opt-in;
 - it never activates when `NODE_ENV=production`;
 - GitHub App and billing credentials are not required;
+- `DEMO_ENV` is not part of `.env`, so a configured deployment cannot fall back to synthetic data by accident;
 - use it only for local demonstrations.
 
 For Node.js development, copy `.env.example` to `.env`, install dependencies, and use the existing development command. For Docker, `docker compose up --build` reads `.env` and serves port 3000.
@@ -38,7 +41,6 @@ For Node.js development, copy `.env.example` to `.env`, install dependencies, an
 Connected mode signs in through GitHub and reads live enterprise billing data. A minimal local `.env` uses placeholders like these:
 
 ```dotenv
-DEMO_ENV=false
 GITHUB_APP_CLIENT_ID=example-client-id
 GITHUB_APP_CLIENT_SECRET=replace-locally
 SESSION_SECRET=replace-with-a-strong-random-value
@@ -67,7 +69,8 @@ Do not copy these placeholder values into a real deployment.
 | `APP_BASE_URL` | Recommended; required behind proxies | Server config | Public origin with no trailing slash. Local default is `http://localhost:3000`. |
 | `ADMIN_LOGINS` | Optional | Server config | Comma-separated reserved administrator allowlist. It does not widen `/me` endpoints. |
 | `BUDGET_REQUEST_REPOSITORY` | Optional | Server config | Exact `OWNER/REPO` destination that enables prepared budget-request issues. |
-| `NPM_REGISTRY` | Optional Docker build input | Build config | npm registry or approved mirror, including trailing slash. When unset, npm uses its standard default. |
+| `NPM_REGISTRY` | Optional Docker build input | Build config | npm registry or approved mirror, including trailing slash. Overrides the `.npmrc` Compose mounts as a build secret. When neither is set, npm uses its standard default. |
+| `NPM_CONFIG_USERCONFIG` | Optional Docker build input | Build config | Path to the npm configuration Compose mounts into the build as a secret. Defaults to the repository's committed `.npmrc`; set it to your user-level file (e.g. `C:\Users\you\.npmrc`) to install from an internal feed. Compose does not expand `~`. |
 
 ### Server-only rule
 

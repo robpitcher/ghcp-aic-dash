@@ -1,40 +1,40 @@
 # Local container wiring for the AI Credit Dashboard.
 #
-# Demo (default, no credentials and no .env required):
+# Configured (default) — uses the real values in `.env`:
 #   docker compose up --build
 #
-# Configured (copy .env.example to .env and fill in real values first):
-#   docker compose --profile configured up --build app
+# Demo — credential-free synthetic data, ignores `.env` entirely:
+#   docker compose --profile demo up --build
 #
-# Name the `app` service explicitly: `demo` has no profile, so an untargeted
-# `up` would also start it and collide on port 3000.
+# Demo mode is opt-in at the command line on purpose: nothing in `.env`
+# selects it, so a configured deployment can never fall back to synthetic data
+# by accident, and the demo container can never be influenced by a stray value
+# in `.env`.
+#
+# Stopping either mode needs the wildcard, because a plain `docker compose
+# down` only targets the profile currently active:
+#   docker compose --profile "*" down
+#
+# `app` uses the empty profile `[""]`, a documented Compose feature
+# (docs.docker.com/compose/how-tos/profiles/) meaning "start by default, but
+# step aside when another profile is active". That is what lets `--profile
+# demo` swap the services cleanly instead of starting both and colliding on
+# port 3000.
+#
+# The two modes are separate services by necessity, not style: isDemoMode() in
+# src/lib/config.ts refuses to activate when NODE_ENV=production, so demo mode
+# needs its own image built from the Dockerfile's `demo` stage.
 services:
-  demo:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: demo
-      args:
-        # Set NPM_REGISTRY in .env when registry.npmjs.org is blocked on your network.
-        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
-    image: ghcp-aic-dash:demo
-    ports:
-      - "3000:3000"
-    environment:
-      # Synthetic data only: no GitHub calls and no credentials.
-      DEMO_ENV: "true"
-      APP_BASE_URL: http://localhost:3000
-
   app:
-    # Started only with: docker compose --profile configured up --build app
-    profiles:
-      - configured
+    profiles: [""]
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        # Set NPM_REGISTRY in .env when registry.npmjs.org is blocked on your network.
-        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
+        # Optional override. Leave unset to inherit the npmrc secret below.
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+      secrets:
+        - npmrc
     image: ghcp-aic-dash:local
     ports:
       - "3000:3000"
@@ -50,6 +50,49 @@ services:
       REQUIRE_ENTERPRISE_MEMBERSHIP: ${REQUIRE_ENTERPRISE_MEMBERSHIP:-true}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
       ADMIN_LOGINS: ${ADMIN_LOGINS:-}
-    env_file:
-      - .env
+      # Optional IssueOps destination. Empty fails the min(1) schema check, so
+      # an unset value correctly reads as "budget requests not configured".
+      BUDGET_REQUEST_REPOSITORY: ${BUDGET_REQUEST_REPOSITORY:-}
+    # No env_file: this explicit list is the runtime allowlist. Compose still
+    # reads `.env` automatically for the ${VAR} interpolation above, so adding
+    # a new runtime variable is a deliberate edit here rather than anything in
+    # `.env` silently reaching the container — including build-time values
+    # like NPM_REGISTRY.
     restart: unless-stopped
+
+  demo:
+    profiles: ["demo"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: demo
+      args:
+        # Optional override. Leave unset to inherit the npmrc secret below.
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+      secrets:
+        - npmrc
+    image: ghcp-aic-dash:demo
+    ports:
+      - "3000:3000"
+    environment:
+      # Synthetic data only: no GitHub calls and no credentials. This service
+      # has no env_file and interpolates nothing, so `.env` never reaches it.
+      DEMO_ENV: "true"
+      APP_BASE_URL: http://localhost:3000
+
+# The build mounts an npm configuration file as a build secret, so an internal
+# feed — and any credentials that file carries — reaches `npm ci` without being
+# written into an image layer, the image history, or the build cache. It is
+# mounted for that build step only.
+#
+# The default is the repository's own committed `.npmrc`, which always exists,
+# so a build against the public registry works with no setup. To install from
+# an internal feed, point NPM_CONFIG_USERCONFIG — the same variable npm itself
+# honours — at your user-level file in `.env`:
+#   NPM_CONFIG_USERCONFIG=/home/you/.npmrc      # macOS/Linux
+#   NPM_CONFIG_USERCONFIG=C:\Users\you\.npmrc   # Windows
+# `npm config get userconfig` prints that path. Compose does not expand `~`, so
+# give a full path.
+secrets:
+  npmrc:
+    file: ${NPM_CONFIG_USERCONFIG:-./.npmrc}

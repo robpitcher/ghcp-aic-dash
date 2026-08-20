@@ -5,6 +5,14 @@ AI credit usage and effective budget. The app signs users in with a GitHub App,
 verifies enterprise membership, and reads billing data with a privileged token
 that stays on the server.
 
+> [!WARNING]
+> This project is a proof of concept provided for evaluation purposes. Before
+> using it in your own environment, review and test the code, configuration,
+> security controls, and operational workflows for your requirements. It may
+> contain bugs or other defects and is not guaranteed to be suitable for
+> production use. You are responsible for validating and operating any
+> deployment.
+
 ## Key capabilities
 
 - Monthly personal usage, model breakdowns, six-month trends, and
@@ -39,13 +47,24 @@ no token, and no `.env` file. Requires
 [Docker](https://docs.docker.com/get-started/get-docker/) with Compose:
 
 ```powershell
-docker compose up --build
+docker compose --profile demo up --build
+```
+
+If your Docker build must install from an internal npm feed, point
+`NPM_CONFIG_USERCONFIG` at your own npm configuration — Compose mounts it as a
+build secret, so its registry and credentials stay out of the image — or pass
+`NPM_REGISTRY` as a build argument, then start the demo:
+
+```powershell
+$env:NPM_CONFIG_USERCONFIG="$env:USERPROFILE\.npmrc"
+docker compose --profile demo build
+docker compose --profile demo up
 ```
 
 Open <http://localhost:3000>. Stop it with:
 
 ```powershell
-docker compose down
+docker compose --profile "*" down
 ```
 
 Demo mode uses synthetic data, skips GitHub sign-in, never calls GitHub, and
@@ -79,7 +98,7 @@ Use this when you want real sign-in and real billing data.
 4. Start the app, either in Docker:
 
    ```powershell
-   docker compose --profile configured up --build app
+   docker compose up --build
    ```
 
    or with Node.js:
@@ -96,8 +115,9 @@ setting and GitHub App step, see [Configuration](docs/configuration.md).
 
 | Command | Purpose |
 | --- | --- |
-| `docker compose up --build` | Run the credential-free demo container |
-| `docker compose --profile configured up --build app` | Run the configured container |
+| `docker compose up --build` | Run the configured container using `.env` |
+| `docker compose --profile demo up --build` | Run the credential-free demo container |
+| `docker compose --profile "*" down` | Stop the container for either mode |
 | `npm run dev` | Start the Next.js development server |
 | `npm run build` | Create a production build |
 | `npm run start` | Serve a production build |
